@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <title>The Neyork Timies</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,7 +19,9 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans)}
-html.lock{overflow:hidden}
+html{touch-action:manipulation}
+html.lock,html.lock body{overflow:hidden;overscroll-behavior:none}
+html.lock body{position:fixed;left:0;right:0}
 button{font:inherit;cursor:pointer}
 .pill{appearance:none;border:1.5px solid var(--ink);background:transparent;border-radius:0;padding:6px 12px;color:inherit;font-family:var(--sans);font-size:13px;font-weight:600;letter-spacing:.02em}
 .pill.primary,.pill.sel{background:var(--ink);color:var(--paper)}
@@ -437,6 +439,7 @@ function openEditor(p, el){
        title:p.title, body:p.body, frameShape:'rect', framePath:null, frameStyle:'minimal', role:1, name:'', grow:false, finish:false,
        base: p.img ? imgOf(p.img) : null};
   EL = el;
+  LOCKY = scrollY; document.body.style.top = (-LOCKY)+'px';
   document.documentElement.classList.add('lock');
   $('page').classList.add('focus'); el.classList.add('active'); el.classList.remove('blank');
   el.innerHTML = editHTML(p);
@@ -444,6 +447,7 @@ function openEditor(p, el){
   const hl = $('edHl'), bd = $('edBody');
   hl.placeholder = t('hlPh'); bd.placeholder = t('bodyPh');
   hl.value = E.title; bd.value = E.body;
+  [hl,bd].forEach(n=>n.addEventListener('focus', ()=>{ n.focus({preventScroll:true}); requestAnimationFrame(()=>scrollTo(0,0)); }));
   hl.addEventListener('keydown', e=>{ if (e.key==='Enter' && !e.isComposing && e.keyCode!==229) e.preventDefault(); });
   [hl,bd].forEach(n=>n.addEventListener('pointerdown', e=>e.stopPropagation()));
   hl.addEventListener('input', ()=>{ E.title = hl.value; autoH(hl); fitStage(); });
@@ -453,15 +457,17 @@ function openEditor(p, el){
   zoomTo(el);
   setTimeout(()=>{ if (E){ document.documentElement.classList.add('ui'); if (MOBILE()) zoomTo(el); } }, 350);
 }
+let LOCKY = 0;
 function closeEditor(after){
   E = null;
   const H = document.documentElement; H.classList.remove('ui','tools','signing');
   $('sheet').style.transform = '';
-  setTimeout(()=>{ H.classList.remove('lock'); $('page').classList.remove('focus'); EL = null; renderPage(); if (after) after(); }, 860);
+  setTimeout(()=>{ H.classList.remove('lock'); document.body.style.top = ''; $('page').classList.remove('focus'); EL = null; renderPage(); scrollTo(0, LOCKY); if (after) after(); }, 860);
 }
 $('close').onclick = ()=>closeEditor();
 let wasMobile = MOBILE();
-addEventListener('resize', ()=>{ if (E && EL){ fitStage(); zoomTo(EL); } else if (MOBILE() !== wasMobile) renderPage(); wasMobile = MOBILE(); });
+let lastW = innerWidth;
+addEventListener('resize', ()=>{ const wChanged = innerWidth !== lastW; lastW = innerWidth; if (E && EL){ if (MOBILE() && !wChanged) return; fitStage(); zoomTo(EL); } else if (MOBILE() !== wasMobile) renderPage(); wasMobile = MOBILE(); });
 
 /* ---------- 每一步的界面 ---------- */
 function renderAll(){
